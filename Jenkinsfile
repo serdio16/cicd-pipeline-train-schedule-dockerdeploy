@@ -14,7 +14,7 @@ pipeline {
             }
             steps {
                 script {
-                    app = docker.build("<DOCKER_HUB_USERNAME>/train-schedule")
+                    app = docker.build("serdio07/train-schedule")
                     app.inside {
                         sh 'echo $(curl localhost:8080)'
                     }
@@ -36,39 +36,3 @@ pipeline {
         }
     }   
 }
-In Jenkins, click Build Now.
-
-Note: The initial build may take several minutes to complete.
-
-In Docker Hub, under Repositories, select the train-schedule app.
-
-Click the Tags tab to verify that the build was pushed successfully.
-
-In GitHub, modify the Jenkinsfile to include a stage that pushes the build to the production server, and commit the changes.
-
-stage ('DeployToProduction') {
-    when {
-        branch 'master'
-    }
-    steps {
-        input 'Deploy to Production'
-        milestone(1)
-        withCredentials ([usernamePassword(credentialsId: 'webserver_login', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
-            script {
-                sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@${env.prod_ip} \"docker pull <DOCKER_HUB_USERNAME>/train-schedule:${env.BUILD_NUMBER}\""
-                try {
-                   sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@${env.prod_ip} \"docker stop train-schedule\""
-                   sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@${env.prod_ip} \"docker rm train-schedule\""
-                } catch (err) {
-                    echo: 'caught error: $err'
-                }
-                sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@${env.prod_ip} \"docker run --restart always --name train-schedule -p 8080:8080 -d <DOCKER_HUB_USERNAME>/train-schedule:${env.BUILD_NUMBER}\""
-            }
-        }
-    }
-}
-In Jenkins, click Build Now.
-
-Once the build is complete, using a web browser, verify that the application has been deployed successfully.
-
-<PRODUCTION_SERVER_PUBLIC_IP_ADDRESS>:8080
